@@ -6,42 +6,52 @@ use App\Models\Owner;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
-use Filament\Widgets\Widget;
-use Flowframe\Trend\Trend;
-use Flowframe\Trend\TrendValue;
+use Illuminate\Support\Facades\DB;
 
 class OwnerMonthRevenueWidget extends ChartWidget
 {
-
     use InteractsWithPageFilters;
+
+    protected static ?string $heading = 'Lucro Diário por Proprietário';
 
     protected function getData(): array
     {
+        $ownerId = $this->filters['owner_id'] ?? null;
+        $month = $this->filters['month'] ?? null;
+        $year = $this->filters['year'] ?? null;
 
-        $start = $this->filters['startDate'];
-        $end = $this->filters['endDate'];
+        if (!$ownerId || !$month || !$year) {
+            return [
+                'datasets' => [['label' => 'Lucro Diário', 'data' => []]],
+                'labels' => [],
+            ];
+        }
 
-        $data = Trend::model(Owner::class)
-            ->between(
-                start: $start ? Carbon::parse($start) : now()->subMonths(6),
-                end: $end ? Carbon::parse($end) : now(),
-            )
-            ->perMonth()
-            ->count();
+        $start = Carbon::createFromFormat('Y-m-d', "$year-$month-01")->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+
+        $results = DB::table('sale_products')
+            ->join('sales', 'sale_products.sale_id', '=', 'sales.id')
+            ->where('sale_products.owner_id', $ownerId)
+            ->whereBetween('sales.sale_date', [$start, $end])
+            ->selectRaw('DATE(sales.sale_date) as sale_day, SUM(sale_products.total) as total')
+            ->groupBy('sale_day')
+            ->orderBy('sale_day')
+            ->get();
 
         return [
             'datasets' => [
                 [
-                    'label' => "Usuarios",
-                    'data' => $data->map(fn (TrendValue $value ) => $value->aggregate)
+                    'label' => 'Lucro Diário',
+                    'data' => $results->pluck('total'),
                 ],
             ],
-            'labels' => $data->map(fn (TrendValue $value ) => $value->date)
+            'labels' => $results->pluck('sale_day'),
         ];
     }
 
-    public function getType(): string 
+    public function getType(): string
     {
-        return 'line';
+        return 'bar';
     }
 }
