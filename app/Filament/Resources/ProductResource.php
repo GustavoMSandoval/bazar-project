@@ -44,6 +44,7 @@ class ProductResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('barcode.code')
                     ->label('Barcode')
+                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),

@@ -2,6 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\OwnerMonthlyRevenueStat;
+use App\Filament\Widgets\OwnerMonthRevenueWidget;
+use App\Filament\Widgets\TotalMonthRevenueStat;
+use App\Filament\Widgets\TotalMonthRevenueWidget;
 use App\Models\Owner;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -11,6 +15,18 @@ use Filament\Forms\Form;
 class Dashboard extends \Filament\Pages\Dashboard
 {
     use HasFiltersForm;
+
+    public function getWidgets(): array
+    {
+        return [
+            // Order here determines layout:
+            OwnerMonthlyRevenueStat::class,
+            TotalMonthRevenueStat::class,
+            OwnerMonthRevenueWidget::class,
+            TotalMonthRevenueWidget::class,
+        ];
+    }
+
 
     public function filtersForm(Form $form): Form
     {
@@ -62,4 +78,10 @@ class Dashboard extends \Filament\Pages\Dashboard
 
         return $years;
     }
+
+    public function getColumns(): int
+    {
+        return 2;
+    }
+
 }

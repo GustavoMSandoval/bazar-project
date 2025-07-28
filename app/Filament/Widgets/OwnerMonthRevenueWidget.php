@@ -46,7 +46,7 @@ class OwnerMonthRevenueWidget extends ChartWidget
                     'data' => $results->pluck('total'),
                 ],
             ],
-            'labels' => $results->pluck('sale_day'),
+            'labels' => $results->map(fn($row) => Carbon::parse($row->sale_day)->format('d/m/Y')),
         ];
     }
 
@@ -54,4 +54,5 @@ class OwnerMonthRevenueWidget extends ChartWidget
     {
         return 'bar';
     }
+    
 }
