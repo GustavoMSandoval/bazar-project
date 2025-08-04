@@ -36,7 +36,7 @@ class Caixa extends Page implements HasForms
 
     public function mount(): void
     {
-         $this->form->fill([
+        $this->form->fill([
             'total' => 0,
             'amount_received' => 0,
             'change_amount' => 0,
@@ -69,9 +69,33 @@ class Caixa extends Page implements HasForms
                         ->schema([
                             Select::make('product_id')
                                 ->label('Produto')
-                                ->options(Product::where('quantity', '>', 0)->pluck('name', 'id'))
                                 ->searchable()
                                 ->required()
+                                ->getSearchResultsUsing(function (string $search) {
+                                    return Product::query()
+                                        ->with('barcode')
+                                        ->where('quantity', '>', 0)
+                                        ->where(function ($query) use ($search) {
+                                            $query->where('name', 'like', "%{$search}%")
+                                                  ->orWhereHas('barcode', function ($q) use ($search) {
+                                                      $q->where('code', 'like', "%{$search}%");
+                                                  });
+                                        })
+                                        ->limit(50)
+                                        ->get()
+                                        ->mapWithKeys(function ($product) {
+                                            return [
+                                                $product->id => $product->name .
+                                                    (isset($product->barcode) ? " ({$product->barcode->code})" : ''),
+                                            ];
+                                        });
+                                })
+                                ->getOptionLabelUsing(function ($value): ?string {
+                                    $product = Product::with('barcode')->find($value);
+                                    return $product
+                                        ? $product->name . (isset($product->barcode) ? " ({$product->barcode->code})" : '')
+                                        : null;
+                                })
                                 ->reactive()
                                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                     $product = Product::find($state);
@@ -79,8 +103,6 @@ class Caixa extends Page implements HasForms
                                         $set('price', $product->price);
                                         $set('available_quantity', $product->quantity);
                                     }
-
-                                    // Garante que o total seja recalculado após selecionar o produto
                                     $this->updateTotal();
                                 }),
 
@@ -165,28 +187,34 @@ class Caixa extends Page implements HasForms
     protected function updateTotal(): void
     {
         $data = $this->form->getState();
-        $total = collect($data['products'] ?? [])->sum(fn ($item) => 
-            (float) ($item['price'] ?? 0) * (int) ($item['quantity'] ?? 1)
-        );
-        
-        // Atualiza o total e reseta o valor recebido e troco
-        $this->form->fill([
-            'total' => $total,
-            'amount_received' => $total, // Define o valor recebido como o total por padrão
-            'change_amount' => 0 // Reseta o troco
-        ]);
+
+        $total = collect($data['products'] ?? [])
+            ->sum(fn ($item) => (float) ($item['price'] ?? 0) * (int) ($item['quantity'] ?? 1));
+
+        // Atualiza apenas o campo "total"
+        $this->form->getComponent('total')->state($total);
+
+        // Se a forma de pagamento for dinheiro e o usuário não digitou nada, sugere o valor recebido
+        if (($data['payment_method'] ?? 'dinheiro') === 'dinheiro' && empty($data['amount_received'])) {
+            $this->form->getComponent('amount_received')->state($total);
+        }
+
+        // Atualiza o troco se necessário
+        if (($data['payment_method'] ?? 'dinheiro') === 'dinheiro') {
+            $received = $data['amount_received'] ?? $total;
+            $this->form->getComponent('change_amount')->state(max(0, $received - $total));
+        }
     }
 
     public function getSales()
     {
-        return Sale::latest()->limit(50)->get(); // ou personalize
+        return Sale::latest()->limit(50)->get();
     }
 
     public function openSalesHistory($saleId)
     {
         $this->sale = Sale::with('products')->findOrFail($saleId);
 
-        // Fecha modal de histórico e abre o modal de comprovante
         $this->dispatch('close-modal', id: 'historico-modal');
         $this->dispatch('open-modal', id: 'modal');
     }
@@ -197,7 +225,6 @@ class Caixa extends Page implements HasForms
         $data = $this->form->getState();
         $now = Carbon::now();
 
-        // Remove produtos com quantidade 0
         $validProducts = collect($data['products'])->filter(fn ($item) => $item['quantity'] > 0)->values();
 
         if ($validProducts->isEmpty()) {
@@ -207,13 +234,11 @@ class Caixa extends Page implements HasForms
                 ->warning()
                 ->send();
 
-            $this->form->fill([
-                ...$data,
-                'products' => [], // Limpa os produtos inválidos do formulário
-                'total' => 0,
-                'amount_received' => 0,
-                'change_amount' => 0,
-            ]);
+            // Limpa apenas os campos necessários
+            $this->form->getComponent('products')->state([]);
+            $this->form->getComponent('total')->state(0);
+            $this->form->getComponent('amount_received')->state(0);
+            $this->form->getComponent('change_amount')->state(0);
 
             $this->isSubmitting = false;
             return;
@@ -235,7 +260,7 @@ class Caixa extends Page implements HasForms
             foreach ($validProducts as $item) {
                 $product = Product::find($item['product_id']);
 
-                $ownerId = $product->barcode->owner_id;
+                $ownerId = $product->barcode->owner_id ?? null;
 
                 $sale->products()->attach($product->id, [
                     'owner_id' => $ownerId,
@@ -253,15 +278,13 @@ class Caixa extends Page implements HasForms
 
             $this->dispatch('open-modal', id: 'modal');
 
-            // Resetar formulário com produtos limpos
-            $this->form->fill([
-                'customer_name' => '',
-                'payment_method' => 'dinheiro',
-                'products' => [],
-                'total' => 0,
-                'amount_received' => 0,
-                'change_amount' => 0,
-            ]);
+            // Resetar apenas os campos
+            $this->form->getComponent('customer_name')->state('');
+            $this->form->getComponent('payment_method')->state('dinheiro');
+            $this->form->getComponent('products')->state([]);
+            $this->form->getComponent('total')->state(0);
+            $this->form->getComponent('amount_received')->state(0);
+            $this->form->getComponent('change_amount')->state(0);
 
             Notification::make()
                 ->title('Venda registrada com sucesso!')
