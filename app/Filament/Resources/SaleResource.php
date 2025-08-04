@@ -27,6 +27,7 @@ class SaleResource extends Resource
         return $form
             ->schema([
                 TextInput::make('customer_name')
+                ->label('Nome do cliente')
             ]);
     }
 
@@ -38,19 +39,25 @@ class SaleResource extends Resource
                     ->searchable(),
                 TextColumn::make('sale_date')
                     ->searchable()
-                    ->date('d/m/Y'),
+                    ->date('d/m/Y')
+                    ->label('Data venda'),
                 TextColumn::make('sale_time')
                     ->searchable()
-                    ->time('H:i'),
+                    ->time('H:i')
+                    ->label('Horário venda'),
                 TextColumn::make('payment_method')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Metódo de Pagamento'),
                 TextColumn::make('amount_received')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Recebido'),
                 TextColumn::make('change_amount')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Troco'),
                 TextColumn::make('customer_name')
                     ->searchable()
-                    ->default("Sem nome"),
+                    ->default("Sem nome")
+                    ->label('Cliente'),
             ])
             ->filters([
                 //

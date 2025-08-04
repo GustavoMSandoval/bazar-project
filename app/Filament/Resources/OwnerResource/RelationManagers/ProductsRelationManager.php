@@ -31,16 +31,20 @@ class ProductsRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('barcode.code')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Cód.Barra'),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Nome'),
                 Tables\Columns\TextColumn::make('quantity')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Quantidade'),
                 Tables\Columns\TextColumn::make('price')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Preço'),
             ])
             ->filters([
                 //

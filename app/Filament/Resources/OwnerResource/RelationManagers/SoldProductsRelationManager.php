@@ -35,7 +35,8 @@ class SoldProductsRelationManager extends RelationManager
                     ->label('Nome'),
                 Tables\Columns\TextColumn::make('value')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Valor'),
                 Tables\Columns\TextColumn::make('total')
                     ->searchable()
                     ->sortable(),

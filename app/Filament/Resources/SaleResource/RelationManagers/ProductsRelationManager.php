@@ -24,7 +24,8 @@ class ProductsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('quantity')
                     ->numeric()
                     ->required()
-                    ->minValue(1),
+                    ->minValue(1)
+                    ->label('Quantidade'),
             ]);
     }
 
@@ -33,14 +34,17 @@ class ProductsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('total')
             ->columns([
-                Tables\Columns\TextColumn::make('CódBarras')
-                    ->getStateUsing(fn ($record) => $record->barcode->code),
-                Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('code')
+                    ->getStateUsing(fn ($record) => $record->barcode->code)
+                    ->label('Cód.Barra'),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nome'),
                 Tables\Columns\TextColumn::make('pivot.quantity')
                     ->label('Quantidade'),
                 Tables\Columns\TextColumn::make('Proprietário')
                     ->getStateUsing(fn ($record) => $record->barcode->owner->name),
-                Tables\Columns\TextColumn::make('value'),
+                Tables\Columns\TextColumn::make('value')
+                    ->label('Valor'),
                 Tables\Columns\TextColumn::make('total'),
             ])
             ->filters([

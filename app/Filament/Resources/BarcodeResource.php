@@ -23,10 +23,12 @@ class BarcodeResource extends Resource
             ->schema([
                 Forms\Components\Select::make('owner_id')
                     ->relationship('owner', 'name')
-                    ->required(),
+                    ->required()
+                    ->label('Proprietário'),
                 Forms\Components\TextInput::make('code')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('Cód.Barra'),
             ]);
     }
 
@@ -35,12 +37,15 @@ class BarcodeResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('owner.name')
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Proprietário'),
                 Tables\Columns\TextColumn::make('code')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Cód.Barra'),
                 Tables\Columns\TextColumn::make('products_count')
                     ->counts('products')
-                    ->label('Products'),
+                    ->label('Products')
+                    ->label('Produtos utilizando código'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

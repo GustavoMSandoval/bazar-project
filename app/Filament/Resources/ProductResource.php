@@ -24,17 +24,21 @@ class ProductResource extends Resource
                     ->relationship('barcode', 'code')
                     ->label('Barcode')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->label('Cód.Barra'),
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('Nome'),
                 Forms\Components\TextInput::make('quantity')
                     ->required()
-                    ->numeric(),
+                    ->numeric()
+                    ->label('Quantidade'),
                 Forms\Components\TextInput::make('price')
                     ->required()
                     ->numeric()
-                    ->prefix('R$'),
+                    ->prefix('R$')
+                    ->label('Preço'),
             ]);
     }
 
@@ -45,15 +49,19 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('barcode.code')
                     ->label('Barcode')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Cód.Barra'),
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Nome'),
                 Tables\Columns\TextColumn::make('quantity')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Quantidade'),
                 Tables\Columns\TextColumn::make('price')
                     ->money('BRL')
-                    ->sortable(),
+                    ->sortable()
+                    ->label('Preço'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
