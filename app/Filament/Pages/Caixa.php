@@ -140,7 +140,9 @@ class Caixa extends Page implements HasForms
                         ->required()
                         ->addActionLabel('Adicionar Produto')
                         ->orderColumn()
-                        ->collapsible(),
+                        ->collapsible()
+                        ->reactive()
+                        ->afterStateUpdated(fn () => $this->updateTotal()), // recalcula ao adicionar/remover/alterar
                 ]),
 
             Section::make('Pagamento')
@@ -156,7 +158,8 @@ class Caixa extends Page implements HasForms
                         ])
                         ->required()
                         ->default('dinheiro')
-                        ->reactive(),
+                        ->reactive()
+                        ->afterStateUpdated(fn () => $this->updateTotal()),
 
                     TextInput::make('total')
                         ->label('Total da Venda')
@@ -171,6 +174,8 @@ class Caixa extends Page implements HasForms
                         ->default(0)
                         ->required()
                         ->visible(fn (callable $get) => $get('payment_method') === 'dinheiro')
+                        ->reactive()
+                        ->afterStateUpdated(fn () => $this->updateTotal())
                         ->dehydrated(true),
 
                     TextInput::make('change_amount')
@@ -188,21 +193,25 @@ class Caixa extends Page implements HasForms
     {
         $data = $this->form->getState();
 
+        // Se não tiver produtos, o total vai para 0
         $total = collect($data['products'] ?? [])
+            ->filter(fn ($item) => !empty($item['product_id']) && $item['quantity'] > 0)
             ->sum(fn ($item) => (float) ($item['price'] ?? 0) * (int) ($item['quantity'] ?? 1));
 
-        // Atualiza apenas o campo "total"
         $this->form->getComponent('total')->state($total);
 
-        // Se a forma de pagamento for dinheiro e o usuário não digitou nada, sugere o valor recebido
-        if (($data['payment_method'] ?? 'dinheiro') === 'dinheiro' && empty($data['amount_received'])) {
-            $this->form->getComponent('amount_received')->state($total);
-        }
-
-        // Atualiza o troco se necessário
         if (($data['payment_method'] ?? 'dinheiro') === 'dinheiro') {
-            $received = $data['amount_received'] ?? $total;
-            $this->form->getComponent('change_amount')->state(max(0, $received - $total));
+            $received = (float) ($data['amount_received'] ?? 0);
+
+            // Se o valor recebido for menor que o total, ajusta automaticamente
+            if ($received < $total) {
+                $received = $total;
+                $this->form->getComponent('amount_received')->state($received);
+            }
+
+            // Calcula o troco
+            $change = max(0, $received - $total);
+            $this->form->getComponent('change_amount')->state($change);
         }
     }
 
@@ -234,7 +243,6 @@ class Caixa extends Page implements HasForms
                 ->warning()
                 ->send();
 
-            // Limpa apenas os campos necessários
             $this->form->getComponent('products')->state([]);
             $this->form->getComponent('total')->state(0);
             $this->form->getComponent('amount_received')->state(0);
@@ -259,7 +267,6 @@ class Caixa extends Page implements HasForms
 
             foreach ($validProducts as $item) {
                 $product = Product::find($item['product_id']);
-
                 $ownerId = $product->barcode->owner_id ?? null;
 
                 $sale->products()->attach($product->id, [
@@ -278,7 +285,6 @@ class Caixa extends Page implements HasForms
 
             $this->dispatch('open-modal', id: 'modal');
 
-            // Resetar apenas os campos
             $this->form->getComponent('customer_name')->state('');
             $this->form->getComponent('payment_method')->state('dinheiro');
             $this->form->getComponent('products')->state([]);
